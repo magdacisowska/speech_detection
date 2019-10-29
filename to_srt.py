@@ -14,9 +14,6 @@ def to_srt(filename):
             f.write(time_stamp)
             if line == '1 0\n':
                 f.write('NO SPEECH\n\n')
-            # elif line == '0 1 0\n':
-            #     f.write('NO SPEECH\n\n')
-            # if line == '0 0 1\n':
             else:
                 f.write('SPEECH\n\n')
 
