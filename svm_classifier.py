@@ -1,7 +1,6 @@
 import numpy as np
 import datetime
 from math import log, sqrt
-import matplotlib.pyplot as plt
 from sklearn import svm, metrics
 
 
@@ -56,19 +55,19 @@ def lin_pred(frame, rank):
             R[i][j] = sum(np.convolve(vector_1, vector_2))
 
     # calculate model(filter) coefficients(poles)
-    a = np.dot(np.linalg.inv(R), R_vec).reshape((1, rank))[0]
-    # print("Model coefficients:\n", a)
+    try:
+        a = np.dot(np.linalg.inv(R), R_vec).reshape((1, rank))[0]
+    except np.linalg.LinAlgError:
+        return np.ones(rank).reshape((1, rank)), 10         # in case of singular matrix (very rare)
 
     # calculate inverse filter coefficients
     a_inverse = np.ones(rank + 1)
     a_inv = [-a[j] for j in range(rank)]
     a_inverse[1:] = a_inv
-    # print(a_inverse)
 
     # calculate inverse filter response (error)
     inverse_filter_response = np.convolve(frame, a_inverse)
     error = abs(sum(inverse_filter_response))
-    # print("Log of error: ", log(error))
 
     return a[1], error
 
@@ -85,18 +84,22 @@ def features_from_file(filename):
         feature_4, feature_5 = lin_pred(frame, 12)
 
         feature_vec = np.array([feature_1, feature_2, feature_3, feature_4, feature_5]).reshape((1, 5))
-        with open('inputs/svm_input_ugandan.txt', 'a+') as f:
-            np.savetxt(f, feature_vec)
+        with open('inputs/svm_input_' + filename + '.txt', 'a+') as f:
+            try:
+                np.savetxt(f, feature_vec)
+            except:
+                np.savetxt(f, np.array([0, 0, 0, 0, 0]).reshape((1, 5)))    # very rare
         print(index)
         index += 1
 
 
 def to_srt(filename):
+    '''Create .srt file with subtitles'''
     file = open(filename)
     lines = file.readlines()
     i = 0
     for line in lines:
-        with open('svm_output.srt', 'a+') as f:
+        with open('svm_output_2.srt', 'a+') as f:
             f.write(str(i) + '\n')
             time_stamp = datetime.timedelta(milliseconds=i * 10).__str__()[:11] + ' --> ' + \
                          datetime.timedelta(milliseconds=i * 10 + 10) .__str__()[:11] + '\n'
@@ -112,17 +115,21 @@ def to_srt(filename):
 
 
 x, y = read_input_output(filename='svm_input_ugandan', label_filename='ugandan', end=16000)
+x_2, y_2 = read_input_output(filename='svm_input_split_2PpxiG0WU18', label_filename='split_2PpxiG0WU18', end=16000)
+x_3, y_3 = read_input_output(filename='svm_input_split_4gVsDd8PV9U', label_filename='split_4gVsDd8PV9U', end=16000)
 
 classifier = svm.SVC(gamma='scale', verbose=True)
-classifier.fit(x[4000:], y[4000:])
-y_test = classifier.predict(x[:4000])
-print("Accuracy:", metrics.accuracy_score(y_test, y[:4000]))
-print(y_test)
-with open('svm_results.txt', 'w+') as file:
+classifier.fit(x_2[4000:], y_2[4000:])
+y_test = classifier.predict(x_2[:4000])
+print("Accuracy:", metrics.accuracy_score(y_test, y_2[:4000]))
+with open('svm_results_2.txt', 'w+') as file:
     for item in y_test:
         if item == 0:
             file.write("SPEECH\n")
         else:
             file.write("NO SPEECH\n")
-to_srt('svm_results.txt')
-# features_from_file('split')
+to_srt('svm_results_2.txt')
+# features_from_file('split_2PpxiG0WU18')
+# features_from_file('split_2qQs3Y9OJX0')
+# features_from_file('split_4gVsDd8PV9U')
+
